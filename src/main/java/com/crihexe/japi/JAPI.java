@@ -28,14 +28,13 @@ import com.crihexe.japi.annotations.BodyParam;
 import com.crihexe.japi.annotations.Endpoint;
 import com.crihexe.japi.annotations.Header;
 import com.crihexe.japi.annotations.Method;
-import com.crihexe.japi.annotations.Nullable;
 import com.crihexe.japi.annotations.Method.Auth;
 import com.crihexe.japi.annotations.Method.Methods;
+import com.crihexe.japi.annotations.Nullable;
 import com.crihexe.japi.annotations.PathParam;
 import com.crihexe.japi.annotations.QueryParam;
-import com.crihexe.japi.exception.Life360Exception;
+import com.crihexe.japi.exception.JAPIException;
 import com.crihexe.japi.jackson.BooleanDeserializer;
-import com.crihexe.japi.request.Request;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -67,7 +66,7 @@ public class JAPI {
 		this.defaultAuthKey = authkey;
 	}
 	
-	public String send(Request request) throws NullPointerException, Life360Exception, JSONException, IllegalArgumentException, IllegalAccessException {
+	public String send(Object request) throws NullPointerException, JAPIException, JSONException, IllegalArgumentException, IllegalAccessException {
 		Class<?> c = validateRequest(request);
 		
 		String endpoint = c.getAnnotation(Endpoint.class).value();
@@ -84,7 +83,7 @@ public class JAPI {
 			for(Annotation a : f.getAnnotations()) {
 				if(a.annotationType().equals(BodyParam.class)) {
 					if(f.getAnnotation(BodyParam.class).keepValue()) {
-						if(uniqueFound) throw new Life360Exception("There are multiple BodyParam marked as unique");
+						if(uniqueFound) throw new JAPIException("There are multiple BodyParam marked as unique");
 						uniqueFound = true;
 						if(f.getType().equals(byte[].class)) {
 							rawData = (byte[]) f.get(request);
@@ -99,7 +98,7 @@ public class JAPI {
 					Object value = f.get(request);
 					if(value == null) {
 						if(!f.isAnnotationPresent(Nullable.class))
-							throw new Life360Exception("Null param not market as @Nullable");
+							throw new JAPIException("Null param not market as @Nullable");
 					} else {
 						headers.add(new com.crihexe.japi.http.Header(f.getName(), value));
 					}
@@ -115,9 +114,9 @@ public class JAPI {
 						String authkey = (String) f.get(request);
 						if(authkey == null) 
 							if(f.getAnnotation(AuthKey.class).auto()) {
-								if(defaultAuthKey == null) throw new Life360Exception("The default token is not set! Cannot set the auto token.");
+								if(defaultAuthKey == null) throw new JAPIException("The default token is not set! Cannot set the auto token.");
 								authkey = defaultAuthKey;
-							} else throw new Life360Exception("The specified authkey is null! AuthKey.auto is set to false. Set the authkey or change AuthKey.auto to true to try with the default token!");
+							} else throw new JAPIException("The specified authkey is null! AuthKey.auto is set to false. Set the authkey or change AuthKey.auto to true to try with the default token!");
 
 						headers.add(new com.crihexe.japi.http.Header("Authorization", auth.name + " " + authkey));
 						authAdded = true;
@@ -127,7 +126,7 @@ public class JAPI {
 		}
 		
 		if(!authAdded)
-			if(c.getAnnotation(Method.class).auth() != Auth.none) throw new Life360Exception("This request require an authkey!");
+			if(c.getAnnotation(Method.class).auth() != Auth.none) throw new JAPIException("This request require an authkey!");
 		
 		Methods method = c.getAnnotation(Method.class).method();
 		com.crihexe.japi.http.Header[] headersArr = headers.toArray(new com.crihexe.japi.http.Header[headers.size()]);
@@ -142,15 +141,15 @@ public class JAPI {
 			return put(URL + endpoint, uniqueFound ? uniqueBody : body.toString(), headersArr);
 		}
 		
-		throw new Life360Exception("Invalid method for this request");
+		throw new JAPIException("Invalid method for this request");
 	}
 	
-	public <T> T send(Request request, Class<T> c) throws NullPointerException, JSONException, IllegalArgumentException, IllegalAccessException, Life360Exception, JsonMappingException, JsonProcessingException {
+	public <T> T send(Object request, Class<T> c) throws NullPointerException, JSONException, IllegalArgumentException, IllegalAccessException, JAPIException, JsonMappingException, JsonProcessingException {
 		String response = send(request);
 		return mapper.readValue(response, c);
 	}
 	
-	public <T> T send(Request request, TypeReference<T> valueTypeRef) throws NullPointerException, JSONException, IllegalArgumentException, IllegalAccessException, Life360Exception, JsonMappingException, JsonProcessingException {
+	public <T> T send(Object request, TypeReference<T> valueTypeRef) throws NullPointerException, JSONException, IllegalArgumentException, IllegalAccessException, JAPIException, JsonMappingException, JsonProcessingException {
 		String response = send(request);
 		return mapper.readValue(response, valueTypeRef);
 	}
@@ -248,10 +247,10 @@ public class JAPI {
 		return "";
 	}
 	
-	private Class<?> validateRequest(Request request) throws NullPointerException, Life360Exception {
+	private Class<?> validateRequest(Object request) throws NullPointerException, JAPIException {
 		if(request == null) throw new NullPointerException("Request cannot be null");
 		Class<?> c = request.getClass();
-		if(!c.isAnnotationPresent(Method.class) || !c.isAnnotationPresent(Endpoint.class)) throw new Life360Exception("A valid request should have both Method and Endpoint annotations in order to work!");
+		if(!c.isAnnotationPresent(Method.class) || !c.isAnnotationPresent(Endpoint.class)) throw new JAPIException("A valid request should have both Method and Endpoint annotations in order to work!");
 		return c;
 	}
 	
