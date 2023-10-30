@@ -45,6 +45,8 @@ import com.fasterxml.jackson.datatype.joda.JodaModule;
 
 public class JAPI {
 	
+	private static JAPI defaultInstance;
+	
 	private static CloseableHttpClient httpclient = HttpClients.createDefault();
 	
 	private ObjectMapper mapper = new ObjectMapper().registerModule(new SimpleModule().addDeserializer(Boolean.class, new BooleanDeserializer())).registerModule(new JodaModule()).configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -252,6 +254,11 @@ public class JAPI {
 		Class<?> c = request.getClass();
 		if(!c.isAnnotationPresent(Method.class) || !c.isAnnotationPresent(Endpoint.class)) throw new JAPIException("A valid request should have both Method and Endpoint annotations in order to work!");
 		return c;
+	}
+	
+	public static JAPI defaultInstance(String url) {
+		if(defaultInstance == null) defaultInstance = new JAPI(url);
+		return defaultInstance;
 	}
 	
 }
